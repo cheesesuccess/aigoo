@@ -1,49 +1,88 @@
-import { JSX } from 'solid-js'
+interface FileLegacy {
+  type: 'file'
+  file: File
+}
 
-export interface MenuItem {
+interface FileHandle {
+  type: 'fileRef'
+  file: FileSystemFileHandle
+}
+
+interface FileUrl {
+  type: 'url'
+  url: string
+}
+
+export type FileWrapper = FileLegacy | FileHandle | FileUrl
+
+export type ImageType = Blob | string | undefined
+
+export const MusicItemType = {
+  TRACK: 0,
+  ALBUM: 1,
+  ARTIST: 2,
+  PLAYLIST: 3,
+  HISTORY: 4,
+} as const
+
+export type MusicItemType = typeof MusicItemType[keyof typeof MusicItemType]
+
+export const MusicItemKey = {
+  NAME: 'name',
+  ARTISTS: 'artists',
+  ALBUM: 'album',
+  YEAR: 'year',
+  DURATION: 'duration',
+  DATE_CREATED: 'dateCreated',
+} as const
+
+export type MusicItemKey = typeof MusicItemKey[keyof typeof MusicItemKey]
+
+export interface BaseMusicItem {
+  id: string
+  type: MusicItemType
   name: string
-  action: () => void
-  disabled?: boolean
-  selected?: boolean
 }
 
-export type MenuPosition = {
-  top: number
-  left: number
+export interface UnknownTrack {
+  name: string
+  album?: string
+  artists: string[]
+  year?: string
+  duration: number
+  genre: string[]
+  trackNo?: number
+  trackOf?: number
+  image?: ImageType
+  fileWrapper: FileWrapper
+  primaryColor?: number
+  description?: string
+  topics?: string[]
 }
 
-export interface MenuAlign {
-  horizontal?: 'left' | 'right'
-  vertical?: 'top' | 'bottom'
+export interface Track extends BaseMusicItem, UnknownTrack {
+  type: typeof MusicItemType.TRACK
 }
 
-interface MenuAnchorOptions {
-  anchor: true
-  preferredAlign?: MenuAlign
+export interface BaseMusicItemWithTrackIds extends BaseMusicItem {
+  trackIds: string[]
 }
 
-interface MenuPositionOptions {
-  anchor: false
-  position: MenuPosition
+// For Album and Artists id and name are the same thing,
+// but for consistency still include both.
+export interface Album extends BaseMusicItemWithTrackIds {
+  type: typeof MusicItemType.ALBUM
+  artists: string[]
+  year?: string
+  image?: ImageType
+  description?: string
 }
 
-interface MenuSize {
-  width?: number
-  height?: number
+export interface Artist extends BaseMusicItemWithTrackIds {
+  type: typeof MusicItemType.ARTIST
 }
 
-export type MenuOptions = (MenuAnchorOptions | MenuPositionOptions) & MenuSize
-
-export interface MenuState {
-  isOpen: boolean
-  items: MenuItem[]
-  component?: JSX.Element
-}
-
-export interface MenuContextProps {
-  show(
-    items: MenuState['items'] | { component: JSX.Element },
-    targetElement: HTMLElement,
-    options: MenuOptions,
-  ): void
+export interface Playlist extends BaseMusicItemWithTrackIds {
+  type: typeof MusicItemType.PLAYLIST
+  dateCreated: number
 }
