@@ -3,9 +3,11 @@ name: Deploy to GitHub Pages
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
   workflow_dispatch:
+
+env:
+  # Your repo is a PROJECT site under this path:
+  BASE_PATH: /rajneesh-live.github.io/
 
 jobs:
   build-and-deploy:
@@ -17,34 +19,51 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    
+
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: '18'
-        cache: 'npm'
-        
-    - name: Install dependencies
-      run: npm ci
-      
-    - name: Build
-      run: npm run build
-      
-    - name: Setup Pages
-      if: github.ref == 'refs/heads/main'
-      uses: actions/configure-pages@v4
-      
-    - name: Upload artifact
-      if: github.ref == 'refs/heads/main'
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: './dist'
-        
-    - name: Deploy to GitHub Pages
-      if: github.ref == 'refs/heads/main'
-      id: deployment
-      uses: actions/deploy-pages@v4 
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Build with the correct base for a PROJECT site
+      - name: Build (force base path)
+        run: |
+          # Prefer your package script, but push the base through to Vite
+          npm run build -- --base="${BASE_PATH}" || npx vite build --base="${BASE_PATH}"
+
+      # SPA refresh fix (copy index.html -> 404.html)
+      - name: Add SPA 404 fallback
+        run: |
+          if [ -f "dist/index.html" ]; then
+            cp dist/index.html dist/404.html
+            echo "Created dist/404.html"
+          fi
+
+      # Quick sanity checks in logs
+      - name: List output (sanity check)
+        run: |
+          echo "OUTPUT DIR: dist"
+          ls -la dist | sed -n '1,120p'
+          [ -f dist/404.html ] && echo "OK: 404.html present" || echo "WARN: 404.html missing"
+          echo "---- Check asset URLs in index.html (should start with ${BASE_PATH}) ----"
+          grep -Eo '<(script|link)[^>]+(src|href)=\"/[^\"]+' dist/index.html | head -n 40 || true
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: ./dist
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
